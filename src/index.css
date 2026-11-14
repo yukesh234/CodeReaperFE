@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "./landing.css" layer(components);
+
+@theme {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --color-canvas: #000000;
+  --color-surface: #181818;
+  --color-surface-2: #1f1f1f;
+  --color-surface-3: #272727;
+  --color-line: #313131;
+  --color-muted: #9b9b9b;
+  --animate-rise: rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+}
