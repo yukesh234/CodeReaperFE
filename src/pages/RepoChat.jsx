@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../Auth/AuthContext";
-
+import { ChevronLeft } from "lucide-react";
 const API = import.meta.env.VITE_API_URL;
 
 const SUGGESTIONS = [
@@ -47,7 +47,7 @@ async function* sseEvents(res) {
   }
 }
 
-// ---- markdown (React elements only, so nothing is injected as HTML) ----
+// markdown (React elements only, so nothing is injected as HTML) ----
 
 function inline(text, key) {
   const out = [];
@@ -155,7 +155,7 @@ function Sources({ repo, sources }) {
   );
 }
 
-function Centered({ icon, title, children, action }) {
+function Centered({ icon, title, children }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-6 py-24 text-center">
       <div className="mb-4 grid size-10 place-items-center rounded-lg bg-surface-3 text-xl">
@@ -163,17 +163,41 @@ function Centered({ icon, title, children, action }) {
       </div>
       <h1 className="text-lg font-medium">{title}</h1>
       <p className="mt-1 text-sm text-muted">{children}</p>
-      <div className="mt-6">{action}</div>
     </div>
   );
 }
 
-const backToDashboard = (
-  <Link to="/dashboard" className={btnGhost}>
-    <i className="ph ph-arrow-left" aria-hidden="true" />
-    Back to repositories
-  </Link>
-);
+// Always rendered, in every phase. The arrow always goes to the repositories list.
+function Header({ repo, showNewChat, onNewChat, disabled }) {
+  return (
+    <header className="flex items-center gap-3 border-b border-surface-3 px-6 py-3">
+      <Link
+        to="/dashboard"
+        aria-label="Back to repositories"
+        title="Back to repositories"
+        className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-300 hover:bg-surface-3 hover:text-white focus-visible:outline-2 focus-visible:outline-white cursor-pointer"
+      >
+        <ChevronLeft />
+        
+      </Link>
+      <div className="min-w-0 flex-1">
+        {repo?.fullName ? (
+          <>
+            <h1 className="truncate font-mono text-sm font-medium">{repo.fullName}</h1>
+            <p className="text-xs text-muted">{repo.chunkCount} chunks indexed</p>
+          </>
+        ) : (
+          <p className="text-sm font-medium">Repositories</p>
+        )}
+      </div>
+      {showNewChat && (
+        <button onClick={onNewChat} disabled={disabled} className={`${btnGhost} disabled:opacity-40`}>
+          New chat
+        </button>
+      )}
+    </header>
+  );
+}
 
 export default function RepoChat() {
   const { id } = useParams();
@@ -324,44 +348,44 @@ export default function RepoChat() {
     }
   }
 
-  if (phase === "loading") {
-    return <div className="grid min-h-screen place-items-center bg-canvas text-sm text-muted" aria-busy="true">Loading…</div>;
+  // ---- non-chat states: header (with back arrow) + a centered message ----
+  if (phase !== "ready") {
+    let body;
+    if (phase === "loading") {
+      body = <p className="py-24 text-center text-sm text-muted" aria-busy="true">Loading…</p>;
+    } else if (phase === "missing") {
+      body = (
+        <Centered icon="ph-folder-open" title="Repository not found">
+          This repository hasn't been indexed yet, or it doesn't belong to your account.
+        </Centered>
+      );
+    } else if (phase === "error") {
+      body = (
+        <Centered icon="ph-warning-circle" title="Could not load this repository">
+          Check that the backend is running, then try again.
+        </Centered>
+      );
+    } else {
+      body = (
+        <Centered icon="ph-hourglass" title={repo?.status === "indexing" ? "Still indexing" : "Not ready yet"}>
+          {repo?.status === "failed"
+            ? "Indexing failed for this repository. Go back and retry it."
+            : "You can ask questions once indexing has finished."}
+        </Centered>
+      );
+    }
+    return (
+      <div className="flex min-h-screen flex-col bg-canvas font-sans text-white">
+        <Header repo={null} />
+        <main className="flex-1">{body}</main>
+      </div>
+    );
   }
 
-  const shell = (children) => <div className="min-h-screen bg-canvas font-sans text-white">{children}</div>;
-
-  if (phase === "missing")
-    return shell(<Centered icon="ph-folder-open" title="Repository not found" action={backToDashboard}>
-      This repository hasn't been indexed yet, or it doesn't belong to your account.
-    </Centered>);
-  if (phase === "error")
-    return shell(<Centered icon="ph-warning-circle" title="Could not load this repository" action={backToDashboard}>
-      Check that the backend is running, then try again.
-    </Centered>);
-  if (phase === "notready")
-    return shell(<Centered icon="ph-hourglass" title={repo?.status === "indexing" ? "Still indexing" : "Not ready yet"} action={backToDashboard}>
-      {repo?.status === "failed"
-        ? "Indexing failed for this repository. Go back and retry it."
-        : "You can ask questions once indexing has finished."}
-    </Centered>);
-
+  // ---- chat ----
   return (
     <div className="flex h-screen flex-col bg-canvas font-sans text-white">
-      <header className="flex items-center gap-3 border-b border-surface-3 px-6 py-3">
-        <Link to="/dashboard" aria-label="Back to repositories"
-              className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-300 hover:bg-surface-3 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
-          <i className="ph ph-arrow-left text-lg" aria-hidden="true" />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-mono text-sm font-medium">{repo.fullName}</h1>
-          <p className="text-xs text-muted">{repo.chunkCount} chunks indexed</p>
-        </div>
-        {messages.length > 0 && (
-          <button onClick={newChat} disabled={sending} className={`${btnGhost} disabled:opacity-40`}>
-            New chat
-          </button>
-        )}
-      </header>
+      <Header repo={repo} showNewChat={messages.length > 0} onNewChat={newChat} disabled={sending} />
 
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="mx-auto max-w-3xl">

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../Auth/AuthContext";
-import Loader from "../components/Loader";
+import Loader from "../Loader";
 
 const API = import.meta.env.VITE_API_URL;
+
 const LOGIN_URL = `${API}/oauth2/authorization/github`;
 
 const TAGLINE =
@@ -304,7 +305,7 @@ export default function Landing() {
       </footer>
 
       {redirecting && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-100">
           <Loader label="Redirecting to GitHub" />
         </div>
       )}
